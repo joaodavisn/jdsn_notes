@@ -3,13 +3,15 @@
 import { set } from "draft-js/lib/DefaultDraftBlockRenderMap";
 import ColorSelector from "../components/ColorSelector"
 import NotePortrait from "../components/NotePortrait"
+import { formatDistanceToNow, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFloppyDisk, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 export default function Dashboard() {
-    const placeholderColors = [
+    const colors = [
         {
             id: 0,
             color: "#E1BC3B",
@@ -17,7 +19,7 @@ export default function Dashboard() {
         },
         {
             id: 1,
-            color: "#A9E42A",
+            color: "#92C821",
             name: "Oliva"
         },
         {
@@ -37,67 +39,64 @@ export default function Dashboard() {
         },
     ];
 
-    const [placeholderNotes, setPlaceholderNotes] = useState([
-        {
-            id: 0,
-            title: "Nota 1",
-            content: "Conteúdo da nota 1, por enqanto",
-            color: 1,
-            dateTime: "01/01/2021 11:32:00",
-            lastModified: "01/01/2021 11:32:00"
-        },
-        {
-            id: 1,
-            title: "Nota 2 tem um titulo maior",
-            content: "Conteúdo da nota 1 vai alem dos limites da nota? eh o que veremos. Realmente n sei.",
-            color: 2,
-            dateTime: "01/01/2021 11:32:00",
-            lastModified: "01/01/2021 11:32:00"
+    const [notes, setNotes] = useState(null);
 
-        }
-    ])
-
-    const [selectedColor, setSelectedColor] = useState(placeholderColors[0].color);
-
-    const handleColorSelect = (color) => {
-        setSelectedColor(color);
-        console.log(color);
-    };
-
-
-    // const [textType, setTextType] = useState("title");
+    const [selectedColor, setSelectedColor] = useState(colors[0].color);
 
     const [noteTitle, setNoteTitle] = useState("");
     const [noteContent, setNoteContent] = useState("");
     const [isEditing, setIsEditing] = useState(false);
+    const [userId, setUserId] = useState("1");
+    const [apiKey, setApiKey] = useState("sk_ds1tq81ibzsyffr8lx6h3e");
 
+    const openNote = (id) => {
 
-    const openNote = (noteId) => {
-        setNoteTitle(placeholderNotes[noteId].title);
-        setNoteContent(placeholderNotes[noteId].content);
-        setSelectedColor(placeholderColors[placeholderNotes[noteId].color].color);
-        setIsEditing(true);
+        if (notes[id]) {
+            setNoteTitle(notes[id].title || "");
+            setNoteContent(notes[id].content || "");
+            setSelectedColor(colors[notes[id].color]?.color || colors[0].color);
+            setIsEditing(true);
+        } else {
+            console.error(`Note with ID ${id} not found in the notes array.`);
+        }
     }
 
     const createNote = () => {
-        let newNotes = placeholderNotes;
-        newNotes.push({
-            id: newNotes.length,
+        let newNote = {
             title: noteTitle,
             content: noteContent,
             color: selectedColor,
-            dateTime: new Date().toLocaleString(),
+            creation: new Date().toLocaleString(),
             lastModified: new Date().toLocaleString()
+        };
+    
+        fetch("https://api.joaodavisn.com/api.php/createNote/" + apiKey + "/" + userId + "/" + noteTitle + "/" + noteContent + "/" + selectedColor + "/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let newNotes = [...notes, newNote];
+                setNotes(newNotes);
+            } else {
+                console.error("API Error:", data.message);
+            }
+        })
+        .catch(error => {
+            console.error("API Error:", error);
         });
-        setPlaceholderNotes(newNotes);
     }
+    
 
     const updateNote = (noteId, content, color) => {
-        let newNotes = placeholderNotes;
+        let newNotes = notes;
         newNotes[noteId].content = content;
         newNotes[noteId].color = color;
         newNotes[noteId].lastModified = new Date().toLocaleString();
-        setPlaceholderNotes(newNotes);
+        setNotes(newNotes);
     }
 
     const saveNote = () => {
@@ -111,31 +110,66 @@ export default function Dashboard() {
     const newNote = () => {
         setNoteTitle("");
         setNoteContent("");
-        setSelectedColor(placeholderColors[0].color);
+        setSelectedColor(colors[0].color);
     }
 
     const deleteNote = (noteId) => {
-        let newNotes = placeholderNotes;
+        let newNotes = notes;
         newNotes.splice(noteId, 1);
-        setPlaceholderNotes(newNotes);
+        setNotes(newNotes);
+    }
+
+    const getNotes = () => {
+        fetch("https://api.joaodavisn.com/api.php/getNotes/" + apiKey + "/" + userId, { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                setNotes(data);
+            })
+            .catch(error => {
+                console.error("API Error:", error);
+            });
+    }
+
+    const formatCreation = (date) => {
+        const creation = parseISO(date);
+        const distance = formatDistanceToNow(creation, { locale: ptBR });
+        return distance;
+    }
+
+    useEffect(() => {
+        getNotes();
+    }, []);
+
+    if (!notes) {
+        return (
+            <p>loading</p>
+        )
     }
 
     return (
         <main className="flex w-screen h-screen min-h-screen flex-row items-center justify-center content-center px-36 py-12 gap-4 bg-[#1C1C1C]">
             <section className="flex flex-col items-center justify-start h-full gap-4 px-12">
                 <p className="text-[#F1F1F1] text-left text-3xl font-bold">Suas notas</p>
-                <div className="flex flex-col items-center justify-center gap-4">
-                    {placeholderNotes.map((note) => {
-                        return (
-                            <NotePortrait key={note.id} title={note.title} content={note.content} color={placeholderColors[note.color].color} dateTime={note.dateTime} onClick={() => openNote(note.id)} />
-                        )
-                    }
-                    )}
+                <div className="flex flex-col items-center justify-center overflow-y-auto h-fit w-full overflow-x-hidden">
+                    <div className="h-full flex flex-col gap-4 px-3">
+                        {notes?.map((note, index) => (
+                            <NotePortrait
+                                key={note.id}
+                                title={note.title}
+                                content={note.content}
+                                color={colors[note.color]?.color || colors[0].color}
+                                dateTime={formatCreation(note.creation)}
+                                onClick={() => openNote(index)}
+                            />
+                        ))}
+                    </div>
                 </div>
-                <button className="justify-center bg-[#00A3FF] hover:bg-[#0082CB] text-[#F1F1F1] text-sm font-bold rounded-full w-full py-2 items-center flex flex-row gap-2" onClick={()=>{newNote()}}>
+                <div className="w-full px-3">
+                <button className="justify-center bg-[#00A3FF] hover:bg-[#0082CB] text-[#F1F1F1] text-sm font-bold rounded-full w-full py-2 items-center flex flex-row gap-2" onClick={() => { newNote() }}>
                     Nova nota
                     <span className="ring-[1.5px] w-4 h-4 rounded-full ring-[#F1F1F1] flex justify-center items-center content-center"><FontAwesomeIcon icon={faPlus} className="text-[#F1F1F1] text-xs" /></span>
                 </button>
+                </div>
             </section>
             <div className="h-[90vh] w-1 verticalBorder"></div>
             <section className="flex flex-col items-start justify-start gap-4 px-12 h-full w-full">
@@ -150,9 +184,11 @@ export default function Dashboard() {
                     </div>
                     <hr className="w-full border-[#313131] border-1" />
                     <div className="flex flex-row items-center justify-between w-full px-5 pb-5">
-                        <ColorSelector colors={placeholderColors} selectedColor={selectedColor} onColorSelect={handleColorSelect} />
-                        <button className="bg-[#00A3FF] hover:bg-[#0082CB] text-[#F1F1F1] text-sm font-bold rounded-full px-6 py-2 flex items-center justify-center content-center gap-2"
-                            onclick={() => { saveNote(noteContent, selectedColor) }}>Salvar<FontAwesomeIcon icon={faFloppyDisk} /></button>
+                    <ColorSelector colors={colors} selectedColor={selectedColor} onColorSelect={setSelectedColor} />
+                        {noteContent.length > 0 || noteTitle.length > 0 ? (
+                            <button className="bg-[#00A3FF] hover:bg-[#0082CB] text-[#F1F1F1] text-sm font-bold rounded-full px-6 py-2 flex items-center justify-center content-center gap-2"
+                            onClick={() => { saveNote() }}>Salvar<FontAwesomeIcon icon={faFloppyDisk} /></button>
+                        ) : <span className="h-9"/>}
                     </div>
                 </div>
             </section>

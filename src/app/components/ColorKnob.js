@@ -41,7 +41,7 @@ export default function ColorKnob({ color, onClick, selected }) {
                 >
                     {color.name}
                     <svg className="absolute top-[12px] right-[40%]" width="8" height="9" viewBox="0 0 8 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 5L4 8L7 5" stroke="#F1F1F1" stroke-linecap="square" />
+                        <path d="M1 5L4 8L7 5" stroke="#F1F1F1" strokeLinecap="square" />
                         <circle cx="4" cy="3" r="3" fill="#2A2A2A" />
                     </svg>
                 </div>
