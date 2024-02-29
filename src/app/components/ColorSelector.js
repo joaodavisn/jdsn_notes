@@ -7,7 +7,7 @@ export default function ColorSelector({ colors, selectedColor, onColorSelect }) 
         <div className="flex flex-row items-center justify-start gap-2">
             {colors.map((color) => {
                 return (
-                    <ColorKnob color={color} key={color.id} selected={selectedColor === color.color} onClick={() => onColorSelect(color.color)} />
+                    <ColorKnob color={color} key={color.id} selected={selectedColor === color.color} onClick={() => onColorSelect(color)} />
                 )
             })}
         </div>
